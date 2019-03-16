@@ -1,0 +1,193 @@
+﻿
+
+local UnityEngine = CS.UnityEngine
+
+xlua.hotfix(CS.Treasour,'CreatePrize',function(self)
+	for i = 0,4,1 do 
+		
+		local go = UnityEngine.GameObject.Instantiate(self.gold,self.transform.position + UnityEngine.Vector3(-10+i*30,0,0),self.transform.rotation)
+		go.transform.SetParent(go.transform,self.cavas)
+
+		local go1 = UnityEngine.GameObject.Instantiate(self.diamands,self.transform.position + UnityEngine.Vector3(0,30,0) + UnityEngine.Vector3(-10+i*30,0,0),self.transform.rotation)
+		go1.transform.SetParent(go1.transform,self.cavas)
+	end
+end)
+
+
+xlua.private_accessible(CS.Gun)
+xlua.hotfix(CS.Gun,'Attack',function(self)
+	if UnityEngine.Input.GetMouseButtonDown(0) then
+	
+		if UnityEngine.EventSystems.EventSystem.current:IsPointerOverGameObject() then
+			return
+		end
+		
+		--[[
+		if self.gold < 1 + (self.gunLevel - 1)*2 or gold == 0 then
+			return
+		end
+		]]--
+
+		--1.3 炮台3太强
+		if self.gunLevel == 3 and self.diamands < 3 then
+			return 
+		elseif self.gunLevel ~= 3 then
+			if self.gold < 1 + (self.gunLevel - 1)*2 or gold == 0 then
+				return
+			end
+		end
+
+		self.bullectAudio.clip = self.bullectAudios[self.gunLevel - 1]
+		self.bullectAudio:Play()
+
+		if self.Butterfly then
+			UnityEngine.GameObject.Instantiate(self.Bullects[self.gunLevel - 1],self.attackPos.position,self.attackPos.rotation*UnityEngine.Quaternion.Euler(0,0,20))
+			UnityEngine.GameObject.Instantiate(self.Bullects[self.gunLevel - 1],self.attackPos.position,self.attackPos.rotation*UnityEngine.Quaternion.Euler(0,0,-20))
+		end
+
+		UnityEngine.GameObject.Instantiate(self.Bullects[self.gunLevel - 1],self.attackPos.position,self.attackPos.rotation)
+
+		if not self.canShootForFree then
+			if self.gunLevel == 3 then
+				self:DiamandsChange(-3)
+			else
+				self:GoldChange(-1-(self.gunLevel - 1)* 2)
+			end
+		end
+
+		self.attackCD = 0
+		self.attack = false
+	end
+end)
+
+
+-- 1.2
+xlua.private_accessible(CS.Fire)
+xlua.hotfix(CS.Fire,'Start',function(self)
+	self.reduceDiamands = 8;
+end)
+
+xlua.private_accessible(CS.Ice)
+xlua.hotfix(CS.Ice,'Start',function(self)
+	self.reduceDiamands = 8;
+end)
+
+xlua.private_accessible(CS.ButterFly)
+xlua.hotfix(CS.ButterFly,'Start',function(self)
+	self.reduceDiamands = 5;
+end)
+
+
+local util = require 'util'
+xlua.private_accessible(CS.Boss)
+util.hotfix_ex(CS.Boss,'Start',function(self)
+	self.Start(self)
+	self.m_reduceGold = self.m_reduceGold - 20
+end)
+
+xlua.private_accessible(CS.DeffendBoss)
+util.hotfix_ex(CS.DeffendBoss,'Start',function(self)
+	self.Start(self)
+	self.m_reduceGold = self.m_reduceGold - 30
+end)
+
+
+xlua.private_accessible(CS.InvisibleBoss)
+util.hotfix_ex(CS.InvisibleBoss,'Start',function(self)
+	self.Start(self)
+	self.m_reduceDiamond = self.m_reduceDiamond - 5
+end)
+
+
+--1.3金币钻石 显示为负数
+util.hotfix_ex(CS.Gun,'GoldChange',function(self,number)
+	self.GoldChange(self,number)
+	if self.gold < -number then
+		self.gold = 0
+			return
+	end
+end)
+
+util.hotfix_ex(CS.Gun,'DiamandsChange',function(self,number)
+	self.DiamandsChange(self,number)
+	if self.diamands < -number then
+		self.diamands = 0
+			return
+	end
+end)
+
+
+xlua.private_accessible(CS.CreateFish)
+xlua.hotfix(CS.CreateFish,'Update',function(self)
+	self:CreateALotOfFish()
+	
+	--单种鱼的生成
+	if self.ItemtimeVal >= 0.5 then
+		self.num = UnityEngine.Mathf.Floor(UnityEngine.Random.Range(0,4))
+
+		self.ItemNum = UnityEngine.Mathf.Floor(UnityEngine.Random.Range(1,101))
+
+		local halfLength = self.fishList.Length/2;
+		--小鱼
+		local littlefishTypeIndex =UnityEngine.Mathf.Floor(UnityEngine.Random.Range(0,halfLength))
+		--大鱼
+		local bigfishTypeIndex = UnityEngine.Mathf.Floor(UnityEngine.Random.Range(halfLength,self.fishList.Length))
+
+		local itemTypeIndex = UnityEngine.Mathf.Floor(UnityEngine.Random.Range(0,self.item.Length))
+
+		--产生气泡
+		if self.ItemNum < 20 then
+			self:CreateGameObject(self.item[3])
+		end
+
+		if self.ItemNum <= 42 then
+			for i = 0,2,1 do
+				self:CreateGameObject(self.fishList[littlefishTypeIndex])
+			end
+			
+			self:CreateGameObject(self.item[itemTypeIndex])
+
+		elseif self.ItemNum >= 43 and self.ItemNum < 72 then
+			for i = 0,1,1 do
+				self:CreateGameObject(self.fishList[bigfishTypeIndex])
+			end
+			self:CreateGameObject(self.item[itemTypeIndex])
+--		elseif self.ItemNum >= 72 and self.ItemNum < 84 then
+
+		elseif self.ItemNum >= 84 and self.ItemNum < 86 then
+			self:CreateGameObject(self.boss)
+	
+		elseif self.ItemNum >= 87 and self.ItemNum < 88 then
+			self:CreateGameObject(self.boss2)
+
+		elseif self.ItemNum ==100 then
+			self:CreateGameObject(self.boss3)
+
+		else
+			self:CreateGameObject(self.item[0])
+		
+		end
+			self.ItemtimeVal = 0
+	else
+		self.ItemtimeVal = self.ItemtimeVal + CS.UnityEngine.Time.deltaTime
+	end
+
+		--35end
+
+
+		
+end)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
